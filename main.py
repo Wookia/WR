@@ -4,6 +4,7 @@ import time
 from ev3dev import *
 
 class States:
+
     readyToCalibrate = 1
     calibrating = 2
     readyToPrepare = 3
@@ -13,6 +14,7 @@ class States:
     #TODO: colision detector states?
 
 class EV3:
+
     def __init__(self, States):
         self.lmotor = large_motor(OUTPUT_C); assert lmotor.connected
         self.rmotor = large_motor(OUTPUT_B); assert rmotor.connected
@@ -41,6 +43,7 @@ class EV3:
 
 #white>black
 class Params:
+
     def __init__(self, EV3):
         self.EV3 = EV3
         self.whiteRight = EV3.getRightPickerValue()
@@ -87,6 +90,7 @@ class Params:
         self.EV3.stop()
 
 class LineTracker:
+    
     def __init__(self, Params):
         self.EV3 = Params.EV3
         self.Params = Params
