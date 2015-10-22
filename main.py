@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-from time import sleep
+import time
 from ev3dev import *
 
 lmotor = large_motor(OUTPUT_C); assert lmotor.connected
@@ -10,43 +10,47 @@ cs = color_sensor(); assert cs.connected
 ls = light_sensor(); assert ls.connected
 lmotor.speed_regulation_enabled = 'on'
 rmotor.speed_regulation_enabled = 'on'
-whiteLS = None
-whiteCS = None
-blackLS = None
-blackCS = None
 
 def scan(time, dir):
+    global whiteLS
+    global whiteCS
+    global blackLS
+    global blackCS
+    global lmotor
+    global rmotor
+    global ls
+    global cs
     i = 0
     while (i < time):
-        action_button(lmotor, dir*50)
-        action_button(rmotor, -dir*50)
+        lmotor.run_forever(speed_sp=dir*100)
+        rmotor.run_forever(speed_sp=-dir*100)
         valLS = ls.value()
         valCS = cs.value()
-        if (valLS > whiteLS)
+        if (valLS > whiteLS):
             whiteLS = ls.value()
-        elif (valLS < blackLS)
+        elif (valLS < blackLS):
             blackLS = ls.value()
 
-        if (valCS > whiteCS)
+        if (valCS > whiteCS):
             whiteCS = cs.value()
-        elif (valCS < blackCS)
+        elif (valCS < blackCS):
             blackCS = cs.value()
-        i++
+        i+=1
+    lmotor.stop()
+    rmotor.stop()
 
 
-def action_button(motor, pwm):
-    def roll(state):
-        if state:
-            motor.run_forever(duty_cycle_sp=pwm)
-        else:
-            motor.stop()
-    return roll
 while not ts.value():
     print("HWDP")
-scan(1000, -1)
-scan(1000, 1)
-scan(1000, 1)
-scan(1000, -1)
+whiteLS = ls.value() 
+whiteCS = cs.value()
+blackLS = ls.value() 
+blackCS = cs.value() 
+scan(250, -1)
+scan(250, 1)
+scan(250, 1)
+scan(250, -1)
+print("WhiteLS: %s BlackLS: %s" %(whiteLS, blackLS))
+print("WhiteCS: %s BlackCS: %s" %(whiteCS, blackCS))
 while not ts.value():
-    print("WhiteLS: %s BlackLS: %s" %(whiteLS, blackLS))
-    print("WhiteCS: %s BlackCS: %s" %(whiteCS, blackCS))
+	time.sleep(0.1)	
