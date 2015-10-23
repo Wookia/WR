@@ -11,20 +11,20 @@ class States:
     preparing = 4
     readyToRun = 5
     running = 6
-    #TODO: colision detector states?
+    obstacleAvoiding = 7
+    stop = 8
+    #TODO: lastState
 
 class EV3:
 
     def __init__(self, States):
-        self.lmotor = large_motor(OUTPUT_C); assert lmotor.connected
-        self.rmotor = large_motor(OUTPUT_B); assert rmotor.connected
-        self.ts = touch_sensor(); assert ts.connected
-        self.cs = color_sensor(); assert cs.connected
-        self.ls = light_sensor(); assert ls.connected
+        self.lmotor = large_motor(OUTPUT_C); assert self.lmotor.connected
+        self.rmotor = large_motor(OUTPUT_B); assert self.rmotor.connected
+        self.ts = touch_sensor(); assert self.ts.connected
+        self.cs = color_sensor(); assert self.cs.connected
+        self.ls = light_sensor(); assert self.ls.connected
         self.lmotor.speed_regulation_enabled = 'on'
         self.rmotor.speed_regulation_enabled = 'on'
-        self.States = States
-        self.state = States.readyToCalibrate
     def changeLeftMotorSpeed(value):
         self.lmotor.run_forever(speed_sp=value)
 
@@ -52,7 +52,6 @@ class Params:
         self.blackLeft = EV3.getLeftPickerValue()
 
     def calibrate(time, error, calibrationSpeed):
-        self.EV3.state = self.EV3.states.calibrating
         self.scan(time, -1)
         self.scan(time, 1)
         self.scan(time, 1)
@@ -68,7 +67,6 @@ class Params:
         self.trueBlack = -1 + error
         self.trueWhite = 1 - error
         self.calibrationSpeed = calibrationSpeed
-        self.EV3.state = self.EV3.states.readyToPrepare
 
     def scan(time, dir):
         i = 0
@@ -90,10 +88,13 @@ class Params:
         self.EV3.stop()
 
 class LineTracker:
-    
-    def __init__(self, Params):
-        self.EV3 = Params.EV3
-        self.Params = Params
+
+    def __init__(self):
+        self.States = States()
+        self.EV3 = EV3()
+        self.Params = Params()
+        self.States = States()
+        self.state = States.readyToCalibrate
 
     def leftColor():
         #value from 1+e to -1+e
@@ -124,8 +125,44 @@ class LineTracker:
             i += 1
 
     def run():
-        self.counter()
-        self.EV3.state = self.EV3.states.running
+        while True:
+            if (self.state == self.States.readyToCalibrate):
+                print("Ready to calibrate + press button to run")
+                self.wait()
+                self.state = self.States.calibrating
+                self.Params.calibrate(200, 0.1, 100)
+                self.state = self.States.readyToPrepare
+            elif (self.state == self.States.readyToPrepare):
+                print("Ready to prepare + press button to run")
+                self.wait()
+                self.state = self.States.preparing
+                self.prepare()
+                self.state = self.States.readyToRun
+            elif (self.state == self.States.readyToRun):
+                print("Ready to go + press button to run")
+                self.wait()
+                self.counter()
+                self.state = self.States.running
+                self.trackLine()
+            elif (self.state == self.States.stop):
+                print("Stoped + press button to run")
+                self.wait()
+                self.state = self.States.running
+
+    def trackLine():
+        while not self.EV3.ts.value():
+            if (1==2):
+                self.state = self.State.obstacleAvoiding
+                self.avoidObstacle()
+                self.state = self.State.running
+        self.state = self.States.stop
+
+    def avoidObstacle():
+        #TODO: avoiding obstacle
+
+    def wait():
+        while not self.EV3.ts.value():
+            time.sleep(0.01)
         #TODO: run line tracker
 
     def counter():
@@ -140,19 +177,5 @@ class LineTracker:
         sound.speak("go")
 
 
-
-EV3 = EV3()
-Params = Params(EV3)
-LineTracker = LineTracker(Params)
-while not EV3.ts.value():
-    print("Ready to calibrate + press button to run")
-#calibrate(rotation "time", allowed error, calibration speed)
-Params.calibrate(200, 0.1, 100)
-while not EV3.ts.value():
-    print("Ready to prepare + press button to run")
-LineTracker.prepare()
-while not EV3.ts.value():
-    print("Ready to go + press button to run")
+LineTracker = LineTracker()
 LineTrucker.run()
-while not EV3.ts.value():
-	time.sleep(0.1)
