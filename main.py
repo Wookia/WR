@@ -114,10 +114,10 @@ class LineTracker:
             self.EV3.changeLeftMotorSpeed(self.Params.calibrationSpeed)
             self.EV3.changeRightMotorSpeed(-self.Params.calibrationSpeed)
             print("%s" % (int)(self.leftColor()*100))
-            if(self.leftColor()<0.6):
+            if(self.leftColor()<-0.6):
                 crosedBlack = True
             if(crosedBlack):
-                if(self.leftColor()>=0.6):
+                if(self.leftColor()>=0.6 and self.rightColor()<-0.6):
                     self.EV3.stop()
                     self.EV3.state = self.States.readyToRun
                     break
@@ -140,7 +140,7 @@ class LineTracker:
             elif (self.state == self.States.readyToRun):
                 print("Ready to go + press button to run")
                 self.wait()
-                self.counter()
+                #self.counter()
                 self.state = self.States.running
                 self.trackLine()
             elif (self.state == self.States.stop):
@@ -149,7 +149,31 @@ class LineTracker:
                 self.state = self.States.running
 
     def trackLine(self):
-        time.sleep(0.01)
+        #lewy na bialym
+        #prawy na czarnym
+        error = 0
+        lastError = 0
+        errorsSum = 0
+        leftSpeed = 210
+        rightSpeed = 210
+        while(1 == 1):
+            self.leftColor() 
+            if(self.leftColor() > 0 and self.rightColor() < 0):
+                error = 0
+            elif(self.leftColor() > 0 and self.rightColor() > 0):
+                if(lastError == 0):
+                    error = 1
+                elif(lastError == -1):
+                    error = -1
+            elif(self.leftColor() < 0 || self.rightColor() > 0):
+                error = -1
+            errorsSum += error
+            self.EV3.changeLeftMotorSpeed((int)(leftSpeed - error*90 - errorsSum * 0.2 - (error-lastError)*90))
+            self.EV3.changeRightMotorSpeed((int)(rightSpeed + error*90 + errorsSum * 0.2 + (error-lastError)*90))
+            lastError = error
+            
+            
+            
 
     def avoidObstacle(self):
         time.sleep(0.01)
