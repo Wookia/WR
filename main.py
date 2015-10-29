@@ -98,13 +98,13 @@ class LineTracker:
         #positive value if more white
         #negative value if more black
 
-        return ((self.EV3.getLeftPickerValue() - self.Params.trueBlackLeft) - self.Params.midLeft)/self.Params.midLeft
+        return ((self.EV3.getLeftPickerValue() - self.Params.trueBlackLeft) - self.Params.midLeft)/(1.0*self.Params.midLeft)
 
     def rightColor(self):
         #value from 1+e to -1+e
         #positive value if more white
         #negative value if more blac
-        return ((self.EV3.getRightPickerValue() - self.Params.trueBlackRight) - self.Params.midRight)/self.Params.midRight
+        return ((self.EV3.getRightPickerValue() - self.Params.trueBlackRight) - self.Params.midRight)/(1.0*self.Params.midRight)
 
     def prepare(self):
         self.state = self.States.preparing
@@ -113,10 +113,11 @@ class LineTracker:
         while (i<1000):
             self.EV3.changeLeftMotorSpeed(self.Params.calibrationSpeed)
             self.EV3.changeRightMotorSpeed(-self.Params.calibrationSpeed)
-            if(self.leftColor()<-0.4):
+            print("%s" % (int)(self.leftColor()*100))
+            if(self.leftColor()<0.6):
                 crosedBlack = True
             if(crosedBlack):
-                if(self.leftColor()>=0.4):
+                if(self.leftColor()>=0.6):
                     self.EV3.stop()
                     self.EV3.state = self.States.readyToRun
                     break
@@ -148,12 +149,7 @@ class LineTracker:
                 self.state = self.States.running
 
     def trackLine(self):
-        while not self.EV3.ts.value():
-            if (1==2):
-                self.state = self.State.obstacleAvoiding
-                self.avoidObstacle()
-                self.state = self.State.running
-        self.state = self.States.stop
+        time.sleep(0.01)
 
     def avoidObstacle(self):
         time.sleep(0.01)
