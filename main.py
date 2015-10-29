@@ -25,19 +25,19 @@ class EV3:
         self.ls = light_sensor(); assert self.ls.connected
         self.lmotor.speed_regulation_enabled = 'on'
         self.rmotor.speed_regulation_enabled = 'on'
-    def changeLeftMotorSpeed(value):
+    def changeLeftMotorSpeed(self, value):
         self.lmotor.run_forever(speed_sp=value)
 
-    def changeRightMotorSpeed(value):
+    def changeRightMotorSpeed(self, value):
         self.rmotor.run_forever(speed_sp=value)
 
-    def getLeftPickerValue():
-        return self.cs.value()
-
-    def getRightPickerValue():
+    def getLeftPickerValue(self):
         return self.ls.value()
 
-    def stop():
+    def getRightPickerValue(self):
+        return self.cs.value()
+
+    def stop(self):
         self.lmotor.stop()
         self.rmotor.stop()
 
@@ -46,16 +46,19 @@ class Params:
 
     def __init__(self, EV3):
         self.EV3 = EV3
-        self.whiteRight = EV3.getRightPickerValue()
-        self.whiteLeft = EV3.getLeftPickerValue()
-        self.blackRight = EV3.getRightPickerValue()
-        self.blackLeft = EV3.getLeftPickerValue()
+        self.whiteRight = self.EV3.getRightPickerValue()
+        self.whiteLeft = self.EV3.getLeftPickerValue()
+        self.blackRight = self.EV3.getRightPickerValue()
+        self.blackLeft = self.EV3.getLeftPickerValue()
 
-    def calibrate(time, error, calibrationSpeed):
+    def calibrate(self, time, calibrationSpeed):
+        self.calibrationSpeed = calibrationSpeed
         self.scan(time, -1)
         self.scan(time, 1)
         self.scan(time, 1)
         self.scan(time, -1)
+        self.trueBlackLeft = self.blackLeft
+        self.trueBlackRight = self.blackRight
         self.whiteRight = self.whiteRight - self.blackRight
         self.blackRight = 0
         self.whiteLeft = self.whiteLeft - self.blackLeft
@@ -63,16 +66,11 @@ class Params:
         self.midRight = (self.whiteRight + self.blackRight)/2
         self.midLeft = (self.whiteLeft + self.blackLeft)/2
         #value from 0 to 1 (or 0% to 100%)
-        self.error = error
-        self.trueBlack = -1 + error
-        self.trueWhite = 1 - error
-        self.calibrationSpeed = calibrationSpeed
-
-    def scan(time, dir):
+    def scan(self, time, dir):
         i = 0
         while (i < time):
             self.EV3.changeLeftMotorSpeed(dir*self.calibrationSpeed)
-            self.EV3.changeRightMotorSpeed(dir*self.calibrationSpeed)
+            self.EV3.changeRightMotorSpeed(-dir*self.calibrationSpeed)
             valLS = self.EV3.getRightPickerValue()
             valCS = self.EV3.getLeftPickerValue()
             if (valLS > self.whiteRight):
@@ -95,41 +93,42 @@ class LineTracker:
         self.Params = Params(self.EV3)
         self.state = States.readyToCalibrate
 
-    def leftColor():
+    def leftColor(self):
         #value from 1+e to -1+e
         #positive value if more white
         #negative value if more black
-        return (self.EV3.getLeftPickerValue() - self.Params.midLeft)/self.Params.midLeft
 
-    def rightColor():
+        return ((self.EV3.getLeftPickerValue() - self.Params.trueBlackLeft) - self.Params.midLeft)/self.Params.midLeft
+
+    def rightColor(self):
         #value from 1+e to -1+e
         #positive value if more white
-        #negative value if more black
-        return (self.EV3.getRightPickerValue() - self.Params.midRight)/self.Params.midRight
+        #negative value if more blac
+        return ((self.EV3.getRightPickerValue() - self.Params.trueBlackRight) - self.Params.midRight)/self.Params.midRight
 
-    def prepare():
-        self.EV3.state = self.EV3.states.preparing
+    def prepare(self):
+        self.state = self.States.preparing
         i = 0
         crosedBlack = False
         while (i<1000):
-            self.EV3.changeLeftMotorSpeed(-self.Params.calibrationSpeed)
-            self.EV3.changeRightMotorSpeed(self.Params.calibrationSpeed)
-            if(self.leftColor()<self.Params.trueBlack):
+            self.EV3.changeLeftMotorSpeed(self.Params.calibrationSpeed)
+            self.EV3.changeRightMotorSpeed(-self.Params.calibrationSpeed)
+            if(self.leftColor()<-0.4):
                 crosedBlack = True
             if(crosedBlack):
-                if(self.leftColor()>self.Params.trueWhite and self.rightColor()>self.Params.trueWhite):
+                if(self.leftColor()>=0.4):
                     self.EV3.stop()
-                    self.EV3.state = self.EV3.states.readyToRun
+                    self.EV3.state = self.States.readyToRun
                     break
             i += 1
 
-    def run():
+    def run(self):
         while True:
             if (self.state == self.States.readyToCalibrate):
                 print("Ready to calibrate + press button to run")
                 self.wait()
                 self.state = self.States.calibrating
-                self.Params.calibrate(200, 0.1, 100)
+                self.Params.calibrate(400, 60)
                 self.state = self.States.readyToPrepare
             elif (self.state == self.States.readyToPrepare):
                 print("Ready to prepare + press button to run")
@@ -148,7 +147,7 @@ class LineTracker:
                 self.wait()
                 self.state = self.States.running
 
-    def trackLine():
+    def trackLine(self):
         while not self.EV3.ts.value():
             if (1==2):
                 self.state = self.State.obstacleAvoiding
@@ -156,25 +155,26 @@ class LineTracker:
                 self.state = self.State.running
         self.state = self.States.stop
 
-    def avoidObstacle():
+    def avoidObstacle(self):
         time.sleep(0.01)
         #TODO: avoiding obstacle
 
-    def wait():
+    def wait(self):
         while not self.EV3.ts.value():
             time.sleep(0.01)
 
-    def counter():
+    def counter(self):
         sound.speak("3")
-        time.sleep(0.7)
+        time.sleep(1)
         sound.speak("2")
-        time.sleep(0.7)
+        time.sleep(1)
         sound.speak("1")
-        time.sleep(0.7)
+        time.sleep(1)
         sound.speak("ready")
-        time.sleep(0.5)
+        time.sleep(1)
         sound.speak("go")
+        time.sleep(1)
 
 
 LineTracker = LineTracker()
-LineTrucker.run()
+LineTracker.run()
