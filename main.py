@@ -56,12 +56,12 @@ class Params:
         self.scan(time, 1)
         self.scan(time, 1)
         self.scan(time, -1)
-        self.whiteRight = whiteRight - blackRight
+        self.whiteRight = self.whiteRight - self.blackRight
         self.blackRight = 0
-        self.whiteLeft = whiteLeft - blackLeft
+        self.whiteLeft = self.whiteLeft - self.blackLeft
         self.blackLeft = 0
-        self.midRight = (whiteRight + blackRight)/2
-        self.midLeft = (whiteLeft + blackLeft)/2
+        self.midRight = (self.whiteRight + self.blackRight)/2
+        self.midLeft = (self.whiteLeft + self.blackLeft)/2
         #value from 0 to 1 (or 0% to 100%)
         self.error = error
         self.trueBlack = -1 + error
@@ -91,9 +91,8 @@ class LineTracker:
 
     def __init__(self):
         self.States = States()
-        self.EV3 = EV3()
-        self.Params = Params()
-        self.States = States()
+        self.EV3 = EV3(self.States)
+        self.Params = Params(self.EV3)
         self.state = States.readyToCalibrate
 
     def leftColor():
@@ -158,12 +157,12 @@ class LineTracker:
         self.state = self.States.stop
 
     def avoidObstacle():
+        time.sleep(0.01)
         #TODO: avoiding obstacle
 
     def wait():
         while not self.EV3.ts.value():
             time.sleep(0.01)
-        #TODO: run line tracker
 
     def counter():
         sound.speak("3")
