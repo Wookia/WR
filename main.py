@@ -53,9 +53,8 @@ class Params:
 
     def calibrate(self, time, calibrationSpeed):
         self.calibrationSpeed = calibrationSpeed
+        self.scan(time, 1)
         self.scan(time, -1)
-        self.scan(time, 1)
-        self.scan(time, 1)
         self.scan(time, -1)
         self.trueBlackLeft = self.blackLeft
         self.trueBlackRight = self.blackRight
@@ -117,7 +116,7 @@ class LineTracker:
             if(self.leftColor()<-0.6):
                 crosedBlack = True
             if(crosedBlack):
-                if(self.leftColor()>=0.6 and self.rightColor()<-0.6):
+                if(self.leftColor()>=0.6 and self.rightColor()>=0.6):
                     self.EV3.stop()
                     self.EV3.state = self.States.readyToRun
                     break
@@ -129,7 +128,7 @@ class LineTracker:
                 print("Ready to calibrate + press button to run")
                 self.wait()
                 self.state = self.States.calibrating
-                self.Params.calibrate(400, 60)
+                self.Params.calibrate(300, 100)
                 self.state = self.States.readyToPrepare
             elif (self.state == self.States.readyToPrepare):
                 print("Ready to prepare + press button to run")
@@ -154,22 +153,21 @@ class LineTracker:
         error = 0
         lastError = 0
         errorsSum = 0
-        leftSpeed = 210
-        rightSpeed = 210
+        leftSpeed = 160.0
+        rightSpeed = 160.0
+        Kp = 110.0
+        Ki = 1.0
+        Kd = 30.0
+        blackPower = 4.5
         while(1 == 1):
-            self.leftColor() 
-            if(self.leftColor() > 0 and self.rightColor() < 0):
-                error = 0
-            elif(self.leftColor() > 0 and self.rightColor() > 0):
-                if(lastError == 0):
-                    error = 1
-                elif(lastError == -1):
-                    error = -1
-            elif(self.leftColor() < 0 || self.rightColor() > 0):
-                error = -1
-            errorsSum += error
-            self.EV3.changeLeftMotorSpeed((int)(leftSpeed - error*90 - errorsSum * 0.2 - (error-lastError)*90))
-            self.EV3.changeRightMotorSpeed((int)(rightSpeed + error*90 + errorsSum * 0.2 + (error-lastError)*90))
+            right = self.rightColor() 
+            left = self.leftColor()
+            right = right*blackPower if right < 0 else right
+            left = left*blackPower if left < 0 else left
+            error = (right - left)/2.0
+            errorsSum = errorsSum + error
+            self.EV3.changeLeftMotorSpeed((int)(leftSpeed + error*Kp + (1.0*Ki)*errorsSum + (error-lastError)*Kd))
+            self.EV3.changeRightMotorSpeed((int)(rightSpeed - error*Kp - (1.0*Ki)*errorsSum - (error-lastError)*Kd))
             lastError = error
             
             
