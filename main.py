@@ -156,8 +156,8 @@ class LineTracker:
         leftSpeed = 160.0
         rightSpeed = 160.0
         Kp = 110.0
-        Ki = 1.0
-        Kd = 30.0
+        Ki = 2.5
+        Kd = 45.0
         blackPower = 4.5
         while(1 == 1):
             right = self.rightColor() 
@@ -165,11 +165,11 @@ class LineTracker:
             right = right*blackPower if right < 0 else right
             left = left*blackPower if left < 0 else left
             error = (right - left)/2.0
-            errorsSum = errorsSum + error
+            errorsSum = 0.99*errorsSum + error
             self.EV3.changeLeftMotorSpeed((int)(leftSpeed + error*Kp + (1.0*Ki)*errorsSum + (error-lastError)*Kd))
             self.EV3.changeRightMotorSpeed((int)(rightSpeed - error*Kp - (1.0*Ki)*errorsSum - (error-lastError)*Kd))
             lastError = error
-            
+            time.sleep(0.01)
             
             
 
