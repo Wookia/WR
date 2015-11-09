@@ -148,30 +148,59 @@ class LineTracker:
                 self.state = self.States.running
 
     def trackLine(self):
-        #lewy na bialym
-        #prawy na czarnym
+        #left on white
+        #right on white
         error = 0
-        lastError = 0
         errorsSum = 0
-        leftSpeed = 160.0
-        rightSpeed = 160.0
-        Kp = 110.0
-        Ki = 2.5
-        Kd = 45.0
+        speed = 300.0
+        Kp = 150.0
+        Ki = 3
         blackPower = 4.5
+        sumOfErrors = 0
+        errorLimit = 0 #TODO: test value of limit
         while(1 == 1):
-            right = self.rightColor() 
+            right = self.rightColor()
             left = self.leftColor()
             right = right*blackPower if right < 0 else right
             left = left*blackPower if left < 0 else left
             error = (right - left)/2.0
-            errorsSum = 0.99*errorsSum + error
-            self.EV3.changeLeftMotorSpeed((int)(leftSpeed + error*Kp + (1.0*Ki)*errorsSum + (error-lastError)*Kd))
-            self.EV3.changeRightMotorSpeed((int)(rightSpeed - error*Kp - (1.0*Ki)*errorsSum - (error-lastError)*Kd))
-            lastError = error
-            time.sleep(0.01)
-            
-            
+            errorsSum = 0.90*errorsSum + error
+            sumOfErrors = sumOfErrors + error
+            #test if 0 speed is acceptable for motors
+            if (sumOfErrors>errorLimit):
+                #we are turnig right but to slow
+                #stop right motor until we cross black line with right sensor
+                self.EV3.changeRightMotorSpeed(0)
+                blackTouched = False
+                while(1==1):
+                    right = self.rightColor()
+                    if(blackTouched and right>0):
+                        errosSum = 0
+                        sumOfErrors = 0
+                        break
+                    time.sleep(0.01)
+
+            elif (sumOfErrors<-errorLimit):
+                #we are turnig left but to slow
+                #stop left motor until we cross black line with left sensor
+                self.EV3.changeLeftMotorSpeed(0)
+                blackTouched = False
+                while(1==1):
+                    left = self.leftColor()
+                    if(blackTouched and left>0):
+                        errosSum = 0
+                        sumOfErrors = 0
+                        break
+                    time.sleep(0.01)
+
+            else:
+                leftSpeed = (int)(speed + error*Kp + Ki*errorsSum)
+                rightSpeed = (int)(speed - error*Kp - Ki*errorsSum)
+                self.EV3.changeLeftMotorSpeed(leftSpeed)
+                self.EV3.changeRightMotorSpeed(rightSpeed)
+            time.sleep(0.015)
+
+
 
     def avoidObstacle(self):
         time.sleep(0.01)
