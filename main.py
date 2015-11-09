@@ -20,22 +20,32 @@ class EV3:
     def __init__(self, States):
         self.lmotor = large_motor(OUTPUT_C); assert self.lmotor.connected
         self.rmotor = large_motor(OUTPUT_B); assert self.rmotor.connected
+        self.cameraMotor = medium_motor(OUTPUT_A); assert self.cameraMotor.connected
         self.ts = touch_sensor(); assert self.ts.connected
         self.cs = color_sensor(); assert self.cs.connected
         self.ls = light_sensor(); assert self.ls.connected
+        self.ds = infrared_sensor(); assert self.ds.connected
         self.lmotor.speed_regulation_enabled = 'on'
         self.rmotor.speed_regulation_enabled = 'on'
+        self.cameraMotor.speed_regulation_enabled = 'on'
+
     def changeLeftMotorSpeed(self, value):
         self.lmotor.run_forever(speed_sp=value)
 
     def changeRightMotorSpeed(self, value):
         self.rmotor.run_forever(speed_sp=value)
 
+    def changeCameraMotorAngle(self, value):
+        self.cameraMotor.run_forever(speed_sp=value)
+
     def getLeftPickerValue(self):
         return self.ls.value()
 
     def getRightPickerValue(self):
         return self.cs.value()
+
+    def getDistance(self):
+        return self.ds.value()
 
     def stop(self):
         self.lmotor.stop()
@@ -53,6 +63,7 @@ class Params:
 
     def calibrate(self, time, calibrationSpeed):
         self.calibrationSpeed = calibrationSpeed
+        self.maxDistance = 0
         self.scan(time, -1)
         self.scan(time, 1)
         self.scan(time, 1)
@@ -73,6 +84,7 @@ class Params:
             self.EV3.changeRightMotorSpeed(-dir*self.calibrationSpeed)
             valLS = self.EV3.getRightPickerValue()
             valCS = self.EV3.getLeftPickerValue()
+            valDS = self.EV3.getDistance()
             if (valLS > self.whiteRight):
                 self.whiteRight = valLS
             elif (valLS < self.blackRight):
@@ -82,6 +94,8 @@ class Params:
                 self.whiteLeft = valCS
             elif (valCS < self.blackLeft):
                 self.blackLeft = valCS
+            if (valDS>self.maxDistance):
+                self.maxDistance = valDS
             i+=1
         self.EV3.stop()
 
@@ -157,7 +171,7 @@ class LineTracker:
         leftSpeed = 210
         rightSpeed = 210
         while(1 == 1):
-            self.leftColor() 
+            self.leftColor()
             if(self.leftColor() > 0 and self.rightColor() < 0):
                 error = 0
             elif(self.leftColor() > 0 and self.rightColor() > 0):
@@ -171,13 +185,31 @@ class LineTracker:
             self.EV3.changeLeftMotorSpeed((int)(leftSpeed - error*90 - errorsSum * 0.2 - (error-lastError)*90))
             self.EV3.changeRightMotorSpeed((int)(rightSpeed + error*90 + errorsSum * 0.2 + (error-lastError)*90))
             lastError = error
-            
-            
-            
 
-    def avoidObstacle(self):
-        time.sleep(0.01)
-        #TODO: avoiding obstacle
+
+
+    #dir:left/right
+    def avoidObstacle(self, direction):
+        leftSpeed = 210
+        rightSpeed = 210
+        avoiding = True
+        modificator = 30
+        if(direction == 'left'):
+            dir = -1
+        else:
+            dir = 1
+        timer = 1
+        while (avoiding):
+            if(self.EV3.getDistance>self.params.maxDistance):
+                dir = dir * -1
+                timer = -1 * timer
+            if(timer=0):
+                dir = 0
+
+            self.EV3.changeLeftMotorSpeed(leftSpeed + dir*modificator)
+            self.EV3.changeLeftMotorSpeed(leftSpeed - dir*modificator)
+            timer = timer + 1
+
 
     def wait(self):
         while not self.EV3.ts.value():
