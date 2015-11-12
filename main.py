@@ -186,7 +186,7 @@ class LineTracker:
         Ki = 3.0
         blackPower = 4.5
         sumOfErrors = 0
-        errorLimit = 400 #TODO: test value of limit
+        errorLimit = 300 #TODO: test value of limit
         while(1 == 1):
             a = self.EV3.getDistance()
             if(a < self.Params.maxDistance):
@@ -199,7 +199,7 @@ class LineTracker:
             error = (right - left)/2.0
             errorsSum = 0.99*errorsSum + error
             sumOfErrors = sumOfErrors + error
-            if (left <-0.2*blackPower and right<-0.2*blackPower):
+            if (left <-0.5*blackPower and right<-0.5*blackPower):
                 leftSpeed = (int)(speed + error*Kp + Ki*errorsSum)
                 rightSpeed = (int)(speed - error*Kp - Ki*errorsSum)
                 self.EV3.changeLeftMotorSpeed(leftSpeed)
