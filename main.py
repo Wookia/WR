@@ -112,7 +112,6 @@ class LineTracker:
         while (i<1000):
             self.EV3.changeLeftMotorSpeed(self.Params.calibrationSpeed)
             self.EV3.changeRightMotorSpeed(-self.Params.calibrationSpeed)
-            print("%s" % (int)(self.leftColor()*100))
             if(self.leftColor()<-0.6):
                 crosedBlack = True
             if(crosedBlack):
@@ -128,7 +127,7 @@ class LineTracker:
                 print("Ready to calibrate + press button to run")
                 self.wait()
                 self.state = self.States.calibrating
-                self.Params.calibrate(300, 100)
+                self.Params.calibrate(200, 100)
                 self.state = self.States.readyToPrepare
             elif (self.state == self.States.readyToPrepare):
                 print("Ready to prepare + press button to run")
@@ -152,53 +151,57 @@ class LineTracker:
         #right on white
         error = 0
         errorsSum = 0
-        speed = 300.0
-        Kp = 150.0
-        Ki = 3
+        speed = 180
+        Kp = 105
+        Ki = 2.8
         blackPower = 4.5
         sumOfErrors = 0
-        errorLimit = 0 #TODO: test value of limit
+        errorLimit = 400 #TODO: test value of limit
         while(1 == 1):
             right = self.rightColor()
             left = self.leftColor()
             right = right*blackPower if right < 0 else right
             left = left*blackPower if left < 0 else left
             error = (right - left)/2.0
-            errorsSum = 0.90*errorsSum + error
+            errorsSum = 0.99*errorsSum + error
             sumOfErrors = sumOfErrors + error
             #test if 0 speed is acceptable for motors
-            if (sumOfErrors>errorLimit):
-                #we are turnig right but to slow
+            if (left<-0.95*blackPower):
+                print("A")
+                #we are turnig left but to slow
                 #stop right motor until we cross black line with right sensor
-                self.EV3.changeRightMotorSpeed(0)
-                blackTouched = False
+                self.EV3.changeRightMotorSpeed((int)(-0.6*speed))
+                self.EV3.changeLeftMotorSpeed((int)(1.0*speed))
                 while(1==1):
                     right = self.rightColor()
-                    if(blackTouched and right>0):
+                    left = self.leftColor()
+                    if(left>0 or right<0):
                         errosSum = 0
                         sumOfErrors = 0
                         break
-                    time.sleep(0.01)
+                    time.sleep(0.005)
 
-            elif (sumOfErrors<-errorLimit):
-                #we are turnig left but to slow
+            elif (right<-0.95*blackPower):
+                print("B")
+                #we are turnig right but to slow
                 #stop left motor until we cross black line with left sensor
-                self.EV3.changeLeftMotorSpeed(0)
-                blackTouched = False
+                self.EV3.changeLeftMotorSpeed((int)(-0.6*speed))
+                self.EV3.changeRightMotorSpeed((int)(1.0*speed))
                 while(1==1):
                     left = self.leftColor()
-                    if(blackTouched and left>0):
+                    right = self.rightColor()
+                    if(right>0 or left<0):
                         errosSum = 0
                         sumOfErrors = 0
                         break
-                    time.sleep(0.01)
+                    time.sleep(0.005)
 
             else:
                 leftSpeed = (int)(speed + error*Kp + Ki*errorsSum)
                 rightSpeed = (int)(speed - error*Kp - Ki*errorsSum)
                 self.EV3.changeLeftMotorSpeed(leftSpeed)
                 self.EV3.changeRightMotorSpeed(rightSpeed)
-            time.sleep(0.015)
+            time.sleep(0.005)
 
 
 
