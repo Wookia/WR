@@ -261,7 +261,7 @@ class LineTracker:
             self.EV3.changeLeftMotorSpeed(speed)
             self.EV3.changeRightMotorSpeed(speed)
         self.EV3.stop()
-        self.EV3.turnAngle(-dir*0.38, speed)
+        self.EV3.turnAngle(-dir*0.39, speed)
         self.EV3.waitForRunningEnd()
         self.EV3.runAngle(0.7, speed)
         self.EV3.waitForRunningEnd()
@@ -272,7 +272,7 @@ class LineTracker:
         self.EV3.changeCameraMotorAngle(dir*0.25, speed)
         self.EV3.runAngle(1, speed)
         self.EV3.waitForRunningEnd()
-        self.EV3.turnAngle(-dir*0.42, speed)
+        self.EV3.turnAngle(-dir*0.39, speed)
         self.EV3.waitForRunningEnd()
         while (self.rightColor() > 0 or self.leftColor() > 0):
             self.EV3.changeLeftMotorSpeed(speed)
