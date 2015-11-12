@@ -35,8 +35,8 @@ class EV3:
     def changeRightMotorSpeed(self, value):
         self.rmotor.run_forever(speed_sp=value)
 
-    def changeCameraMotorAngle(self, value):
-        self.cameraMotor.run_forever(speed_sp=value)
+    def changeCameraMotorAngle(self, angle, speed):
+        self.cameraMotor.run_to_rel_pos(position_sp=int(-angle*360),speed_sp=speed)
 
     def getLeftPickerValue(self):
         return self.ls.value()
@@ -46,6 +46,23 @@ class EV3:
 
     def getDistance(self):
         return self.ds.value()
+
+    def waitForRunningEnd(self):
+        while ('running' in self.lmotor.state):
+            i = 1
+
+    def turnAngle(self, angle, speed):
+        self.lmotor.run_to_rel_pos(position_sp=int(-angle*360),speed_sp=speed)
+        self.rmotor.run_to_rel_pos(position_sp=int(angle*360),speed_sp=speed)
+
+    def runAngle(self, angle, speed):
+        self.lmotor.run_to_rel_pos(position_sp=int(angle*360),speed_sp=speed)
+        self.rmotor.run_to_rel_pos(position_sp=int(angle*360),speed_sp=speed)
+
+    def checkIfRunning(self):
+        if 'running' in self.lmotor.state:
+            return True
+        return False
 
     def stop(self):
         self.lmotor.stop()
@@ -63,7 +80,7 @@ class Params:
 
     def calibrate(self, time, calibrationSpeed):
         self.calibrationSpeed = calibrationSpeed
-        self.maxDistance = 0
+        self.maxDistance = 20
         self.scan(time, 1)
         self.scan(time, -1)
         self.scan(time, -1)
@@ -93,8 +110,6 @@ class Params:
                 self.whiteLeft = valCS
             elif (valCS < self.blackLeft):
                 self.blackLeft = valCS
-            if (valDS>self.maxDistance):
-                self.maxDistance = valDS
             i+=1
         self.EV3.stop()
 
@@ -172,6 +187,10 @@ class LineTracker:
         sumOfErrors = 0
         errorLimit = 400 #TODO: test value of limit
         while(1 == 1):
+            a = self.EV3.getDistance()
+            if(a < self.Params.maxDistance):
+                self.EV3.stop()
+                self.avoidObstacle("left")
             right = self.rightColor()
             left = self.leftColor()
             right = right*blackPower if right < 0 else right
@@ -179,9 +198,14 @@ class LineTracker:
             error = (right - left)/2.0
             errorsSum = 0.99*errorsSum + error
             sumOfErrors = sumOfErrors + error
+            if (left <-0.95*blackPower and right<-0.95*blackPower):
+                leftSpeed = (int)(speed + error*Kp + Ki*errorsSum)
+                rightSpeed = (int)(speed - error*Kp - Ki*errorsSum)
+                self.EV3.changeLeftMotorSpeed(leftSpeed)
+                self.EV3.changeRightMotorSpeed(rightSpeed)
             #test if 0 speed is acceptable for motors
-            if (left<-0.95*blackPower):
-                print("A")
+            elif (left<-0.95*blackPower):
+                #print("A")
                 #we are turnig left but to slow
                 #stop right motor until we cross black line with right sensor
                 self.EV3.changeRightMotorSpeed((int)(-0.6*speed))
@@ -196,7 +220,7 @@ class LineTracker:
                     time.sleep(0.005)
 
             elif (right<-0.95*blackPower):
-                print("B")
+                #print("B")
                 #we are turnig right but to slow
                 #stop left motor until we cross black line with left sensor
                 self.EV3.changeLeftMotorSpeed((int)(-0.6*speed))
@@ -221,27 +245,53 @@ class LineTracker:
 
     #dir:left/right
     def avoidObstacle(self, direction):
-        leftSpeed = 210
-        rightSpeed = 210
+        speed = 200
         avoiding = True
-        modificator = 30
         if(direction == 'left'):
             dir = -1
         else:
             dir = 1
-        timer = 1
+        self.EV3.turnAngle(dir*0.45, speed)
+        self.EV3.changeCameraMotorAngle(-dir*0.26, speed)
+        self.EV3.waitForRunningEnd()
+        self.EV3.runAngle(0.8, speed)
+        self.EV3.waitForRunningEnd()
+        while (self.EV3.getDistance() < self.Params.maxDistance + 6):
+            self.EV3.changeLeftMotorSpeed(speed)
+            self.EV3.changeRightMotorSpeed(speed)
+        self.EV3.stop()
+        self.EV3.turnAngle(-dir*0.38, speed)
+        self.EV3.waitForRunningEnd()
+        self.EV3.runAngle(0.7, speed)
+        self.EV3.waitForRunningEnd()
+        while (self.EV3.getDistance() < self.Params.maxDistance + 6):
+            self.EV3.changeLeftMotorSpeed(speed)
+            self.EV3.changeRightMotorSpeed(speed)
+        self.EV3.stop()
+        self.EV3.changeCameraMotorAngle(dir*0.25, speed)
+        self.EV3.runAngle(1, speed)
+        self.EV3.waitForRunningEnd()
+        self.EV3.turnAngle(-dir*0.42, speed)
+        self.EV3.waitForRunningEnd()
+        while (self.rightColor() > 0 or self.leftColor() > 0):
+            self.EV3.changeLeftMotorSpeed(speed)
+            self.EV3.changeRightMotorSpeed(speed)
+        if (self.rightColor() > 0 and self.leftColor() > 0):
+            self.EV3.runAngle(0.25, speed)
+            self.EV3.waitForRunningEnd()
+            self.EV3.turnAngle(-dir*0.45, speed)
+            self.EV3.waitForRunningEnd()
+        '''
         while (avoiding):
-            if(self.EV3.getDistance>self.params.maxDistance):
+            if(self.EV3.getDistance()<self.Params.maxDistance):
                 dir = dir * -1
                 timer = -1 * timer
-            if(timer=0):
+            if(timer==0):
                 dir = 0
-
             self.EV3.changeLeftMotorSpeed(leftSpeed + dir*modificator)
             self.EV3.changeLeftMotorSpeed(leftSpeed - dir*modificator)
             timer = timer + 1
-
-
+        '''
     def wait(self):
         while not self.EV3.ts.value():
             time.sleep(0.01)
