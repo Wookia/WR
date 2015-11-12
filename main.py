@@ -180,9 +180,10 @@ class LineTracker:
         #right on white
         error = 0
         errorsSum = 0
-        speed = 180
-        Kp = 105
-        Ki = 2.8
+        #was speed = 180, kp = 105, battery issues
+        speed = 210
+        Kp = 120
+        Ki = 3.0
         blackPower = 4.5
         sumOfErrors = 0
         errorLimit = 400 #TODO: test value of limit
@@ -198,17 +199,17 @@ class LineTracker:
             error = (right - left)/2.0
             errorsSum = 0.99*errorsSum + error
             sumOfErrors = sumOfErrors + error
-            if (left <-0.95*blackPower and right<-0.95*blackPower):
+            if (left <-0.2*blackPower and right<-0.2*blackPower):
                 leftSpeed = (int)(speed + error*Kp + Ki*errorsSum)
                 rightSpeed = (int)(speed - error*Kp - Ki*errorsSum)
                 self.EV3.changeLeftMotorSpeed(leftSpeed)
                 self.EV3.changeRightMotorSpeed(rightSpeed)
             #test if 0 speed is acceptable for motors
-            elif (left<-0.95*blackPower):
+            elif (left<-0.8*blackPower):
                 #print("A")
                 #we are turnig left but to slow
                 #stop right motor until we cross black line with right sensor
-                self.EV3.changeRightMotorSpeed((int)(-0.6*speed))
+                self.EV3.changeRightMotorSpeed((int)(-0.7*speed))
                 self.EV3.changeLeftMotorSpeed((int)(1.0*speed))
                 while(1==1):
                     right = self.rightColor()
@@ -219,11 +220,11 @@ class LineTracker:
                         break
                     time.sleep(0.005)
 
-            elif (right<-0.95*blackPower):
+            elif (right<-0.8*blackPower):
                 #print("B")
                 #we are turnig right but to slow
                 #stop left motor until we cross black line with left sensor
-                self.EV3.changeLeftMotorSpeed((int)(-0.6*speed))
+                self.EV3.changeLeftMotorSpeed((int)(-0.7*speed))
                 self.EV3.changeRightMotorSpeed((int)(1.0*speed))
                 while(1==1):
                     left = self.leftColor()
@@ -251,7 +252,7 @@ class LineTracker:
             dir = -1
         else:
             dir = 1
-        self.EV3.turnAngle(dir*0.45, speed)
+        self.EV3.turnAngle(dir*0.4, speed)
         self.EV3.changeCameraMotorAngle(-dir*0.26, speed)
         self.EV3.waitForRunningEnd()
         self.EV3.runAngle(0.8, speed)
