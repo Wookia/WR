@@ -205,7 +205,7 @@ class LineTracker:
                 self.EV3.changeLeftMotorSpeed(leftSpeed)
                 self.EV3.changeRightMotorSpeed(rightSpeed)
             #test if 0 speed is acceptable for motors
-            elif (left<-0.8*blackPower):
+            elif (left<-0.8*blackPower and abs(sumOfErrors) > 6):
                 #print("A")
                 #we are turnig left but to slow
                 #stop right motor until we cross black line with right sensor
@@ -220,7 +220,7 @@ class LineTracker:
                         break
                     time.sleep(0.005)
 
-            elif (right<-0.8*blackPower):
+            elif (right<-0.8*blackPower and abs(sumOfErrors) > 6):
                 #print("B")
                 #we are turnig right but to slow
                 #stop left motor until we cross black line with left sensor
@@ -252,10 +252,10 @@ class LineTracker:
             dir = -1
         else:
             dir = 1
-        self.EV3.turnAngle(dir*0.4, speed)
+        self.EV3.turnAngle(dir*0.45, speed)
         self.EV3.changeCameraMotorAngle(-dir*0.26, speed)
         self.EV3.waitForRunningEnd()
-        self.EV3.runAngle(0.8, speed)
+        self.EV3.runAngle(0.82, speed)
         self.EV3.waitForRunningEnd()
         while (self.EV3.getDistance() < self.Params.maxDistance + 6):
             self.EV3.changeLeftMotorSpeed(speed)
@@ -272,7 +272,7 @@ class LineTracker:
         self.EV3.changeCameraMotorAngle(dir*0.25, speed)
         self.EV3.runAngle(1, speed)
         self.EV3.waitForRunningEnd()
-        self.EV3.turnAngle(-dir*0.39, speed)
+        self.EV3.turnAngle(-dir*0.35, speed)
         self.EV3.waitForRunningEnd()
         while (self.rightColor() > 0 or self.leftColor() > 0):
             self.EV3.changeLeftMotorSpeed(speed)
@@ -312,3 +312,4 @@ class LineTracker:
 
 LineTracker = LineTracker()
 LineTracker.run()
+
