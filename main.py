@@ -3,6 +3,7 @@
 import time
 from ev3dev import *
 
+#Robot's states
 class States:
 
     readyToCalibrate = 1
@@ -13,8 +14,8 @@ class States:
     running = 6
     obstacleAvoiding = 7
     stop = 8
-    #TODO: lastState
 
+#class wrapping all the necessary sensors'/motors' functions into one object
 class EV3:
 
     def __init__(self, States):
@@ -68,7 +69,7 @@ class EV3:
         self.lmotor.stop()
         self.rmotor.stop()
 
-#white>black
+#class representing the robot parameters and making him able to calibrate the sensors
 class Params:
 
     def __init__(self, EV3):
@@ -113,6 +114,7 @@ class Params:
             i+=1
         self.EV3.stop()
 
+#class with the functional program of a Line Follower w/obstacle avoiding method
 class LineTracker:
 
     def __init__(self):
@@ -133,7 +135,7 @@ class LineTracker:
         #positive value if more white
         #negative value if more blac
         return ((self.EV3.getRightPickerValue() - self.Params.trueBlackRight) - self.Params.midRight)/(1.0*self.Params.midRight)
-
+    #method aligning the robot to the line after calibration
     def prepare(self):
         self.state = self.States.preparing
         i = 0
@@ -141,15 +143,15 @@ class LineTracker:
         while (i<1000):
             self.EV3.changeLeftMotorSpeed(self.Params.calibrationSpeed)
             self.EV3.changeRightMotorSpeed(-self.Params.calibrationSpeed)
-            if(self.leftColor()<-0.6):
+            if(self.leftColor()<-0.2):
                 crosedBlack = True
             if(crosedBlack):
-                if(self.leftColor()>=0.6 and self.rightColor()>=0.6):
+                if(self.leftColor()>=0.2 and self.rightColor()>=0.2):
                     self.EV3.stop()
                     self.EV3.state = self.States.readyToRun
                     break
             i += 1
-
+    #main method with the robot's states
     def run(self):
         while True:
             if (self.state == self.States.readyToCalibrate):
@@ -167,7 +169,6 @@ class LineTracker:
             elif (self.state == self.States.readyToRun):
                 print("Ready to go + press button to run")
                 self.wait()
-                #self.counter()
                 self.state = self.States.running
                 self.trackLine()
             elif (self.state == self.States.stop):
@@ -175,19 +176,20 @@ class LineTracker:
                 self.wait()
                 self.state = self.States.running
 
+    #line following method
     def trackLine(self):
         #left on white
         #right on white
         error = 0
         errorsSum = 0
-        #was speed = 180, kp = 105, battery issues
         speed = 210
         Kp = 120
         Ki = 3.0
         blackPower = 4.5
         sumOfErrors = 0
-        errorLimit = 300 #TODO: test value of limit
+        errorLimit = 300
         while(1 == 1):
+            #obstacle test
             a = self.EV3.getDistance()
             if(a < self.Params.maxDistance):
                 self.EV3.stop()
@@ -199,15 +201,15 @@ class LineTracker:
             error = (right - left)/2.0
             errorsSum = 0.99*errorsSum + error
             sumOfErrors = sumOfErrors + error
+            #the crossroads case - both sensors on black line - do nothing (continue the PID control)
             if (left <-0.5*blackPower and right<-0.5*blackPower):
                 leftSpeed = (int)(speed + error*Kp + Ki*errorsSum)
                 rightSpeed = (int)(speed - error*Kp - Ki*errorsSum)
                 self.EV3.changeLeftMotorSpeed(leftSpeed)
                 self.EV3.changeRightMotorSpeed(rightSpeed)
-            #test if 0 speed is acceptable for motors
+            #the state automata part - turned on when the sum of errors is larger than some constant (in this case - 6)
             elif (left<-0.8*blackPower and abs(sumOfErrors) > 6):
-                #print("A")
-                #we are turnig left but to slow
+                #we are turnig left but too slow
                 #stop right motor until we cross black line with right sensor
                 self.EV3.changeRightMotorSpeed((int)(-0.7*speed))
                 self.EV3.changeLeftMotorSpeed((int)(1.0*speed))
@@ -219,10 +221,9 @@ class LineTracker:
                         sumOfErrors = 0
                         break
                     time.sleep(0.005)
-
+            #the state automata part - opposite direction
             elif (right<-0.8*blackPower and abs(sumOfErrors) > 6):
-                #print("B")
-                #we are turnig right but to slow
+                #we are turnig right but too slow
                 #stop left motor until we cross black line with left sensor
                 self.EV3.changeLeftMotorSpeed((int)(-0.7*speed))
                 self.EV3.changeRightMotorSpeed((int)(1.0*speed))
@@ -236,6 +237,7 @@ class LineTracker:
                     time.sleep(0.005)
 
             else:
+                #PID control
                 leftSpeed = (int)(speed + error*Kp + Ki*errorsSum)
                 rightSpeed = (int)(speed - error*Kp - Ki*errorsSum)
                 self.EV3.changeLeftMotorSpeed(leftSpeed)
@@ -243,7 +245,8 @@ class LineTracker:
             time.sleep(0.005)
 
 
-
+    #the obstacle avoiding method
+    #it's basically a series of turns done by the distance sensor and the robot itself
     #dir:left/right
     def avoidObstacle(self, direction):
         speed = 200
@@ -252,7 +255,7 @@ class LineTracker:
             dir = -1
         else:
             dir = 1
-        self.EV3.turnAngle(dir*0.45, speed)
+        self.EV3.turnAngle(dir*0.43, speed)
         self.EV3.changeCameraMotorAngle(-dir*0.26, speed)
         self.EV3.waitForRunningEnd()
         self.EV3.runAngle(0.82, speed)
@@ -261,7 +264,7 @@ class LineTracker:
             self.EV3.changeLeftMotorSpeed(speed)
             self.EV3.changeRightMotorSpeed(speed)
         self.EV3.stop()
-        self.EV3.turnAngle(-dir*0.39, speed)
+        self.EV3.turnAngle(-dir*0.42, speed)
         self.EV3.waitForRunningEnd()
         self.EV3.runAngle(0.7, speed)
         self.EV3.waitForRunningEnd()
@@ -272,42 +275,34 @@ class LineTracker:
         self.EV3.changeCameraMotorAngle(dir*0.25, speed)
         self.EV3.runAngle(1, speed)
         self.EV3.waitForRunningEnd()
-        self.EV3.turnAngle(-dir*0.35, speed)
+        self.EV3.turnAngle(-dir*0.34, speed)
         self.EV3.waitForRunningEnd()
-        while (self.rightColor() > 0 or self.leftColor() > 0):
+        notPassedLeft = True
+        notPassedRight = True
+        while (notPassedLeft or notPassedRight):
             self.EV3.changeLeftMotorSpeed(speed)
             self.EV3.changeRightMotorSpeed(speed)
-        if (self.rightColor() > 0 and self.leftColor() > 0):
-            self.EV3.runAngle(0.25, speed)
-            self.EV3.waitForRunningEnd()
-            self.EV3.turnAngle(-dir*0.45, speed)
-            self.EV3.waitForRunningEnd()
-        '''
-        while (avoiding):
-            if(self.EV3.getDistance()<self.Params.maxDistance):
-                dir = dir * -1
-                timer = -1 * timer
-            if(timer==0):
-                dir = 0
-            self.EV3.changeLeftMotorSpeed(leftSpeed + dir*modificator)
-            self.EV3.changeLeftMotorSpeed(leftSpeed - dir*modificator)
-            timer = timer + 1
-        '''
+            if (self.rightColor() < 0):
+                notPassedRight = False
+            if (self.leftColor() < 0):
+                notPassedLeft = False
+        while(1 == 1):
+            if (self.rightColor() > 0 and self.leftColor() > 0):
+                break
+        crosedBlack = False
+        while(1 == 1):
+            self.EV3.changeLeftMotorSpeed(-speed*dir)
+            self.EV3.changeRightMotorSpeed(speed*dir)
+            if(self.leftColor()<0):
+                crosedBlack = True
+            if(crosedBlack):
+                if(self.leftColor()>=0 and self.rightColor()>=0):
+                    self.EV3.stop()
+                    break
+
     def wait(self):
         while not self.EV3.ts.value():
             time.sleep(0.01)
-
-    def counter(self):
-        sound.speak("3")
-        time.sleep(1)
-        sound.speak("2")
-        time.sleep(1)
-        sound.speak("1")
-        time.sleep(1)
-        sound.speak("ready")
-        time.sleep(1)
-        sound.speak("go")
-        time.sleep(1)
 
 
 LineTracker = LineTracker()
