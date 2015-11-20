@@ -3,6 +3,7 @@
 import time
 from ev3dev import *
 
+#this class represents the robot's possible states
 class States:
 
     readyToCalibrate = 1
@@ -13,8 +14,9 @@ class States:
     running = 6
     obstacleAvoiding = 7
     stop = 8
-    #TODO: lastState
 
+#this class represents all the robot's effectors and sensors
+#2 "big" motors, one servo for the camera movement, touch sensor for starting, color/light sensors and the infrared
 class EV3:
 
     def __init__(self, States):
@@ -28,13 +30,12 @@ class EV3:
         self.lmotor.speed_regulation_enabled = 'on'
         self.rmotor.speed_regulation_enabled = 'on'
         self.cameraMotor.speed_regulation_enabled = 'on'
-
     def changeLeftMotorSpeed(self, value):
         self.lmotor.run_forever(speed_sp=value)
 
     def changeRightMotorSpeed(self, value):
         self.rmotor.run_forever(speed_sp=value)
-
+	#this methods changes the camera position
     def changeCameraMotorAngle(self, angle, speed):
         self.cameraMotor.run_to_rel_pos(position_sp=int(-angle*360),speed_sp=speed)
 
@@ -46,29 +47,29 @@ class EV3:
 
     def getDistance(self):
         return self.ds.value()
-
+	#this method does an empty while() loop while the left motor is still in motion
     def waitForRunningEnd(self):
         while ('running' in self.lmotor.state):
             i = 1
-
+	#this method turns the robot through an angle
     def turnAngle(self, angle, speed):
         self.lmotor.run_to_rel_pos(position_sp=int(-angle*360),speed_sp=speed)
         self.rmotor.run_to_rel_pos(position_sp=int(angle*360),speed_sp=speed)
-
+	#this method makes the robot run along a straight line (rotate the wheels through an angle)
     def runAngle(self, angle, speed):
         self.lmotor.run_to_rel_pos(position_sp=int(angle*360),speed_sp=speed)
         self.rmotor.run_to_rel_pos(position_sp=int(angle*360),speed_sp=speed)
-
+	#this method checks whether the robot's left motor is in motion and returns a boolean accordingly
     def checkIfRunning(self):
         if 'running' in self.lmotor.state:
             return True
         return False
-
+	#this method makes the 2 movement engines stop
     def stop(self):
         self.lmotor.stop()
         self.rmotor.stop()
 
-#white>black
+#this class represents all the parameters necessary for proper robot functioning
 class Params:
 
     def __init__(self, EV3):
@@ -77,7 +78,9 @@ class Params:
         self.whiteLeft = self.EV3.getLeftPickerValue()
         self.blackRight = self.EV3.getRightPickerValue()
         self.blackLeft = self.EV3.getLeftPickerValue()
-
+	#the calibration method scanning the environment for "the blackest black" and "the whitest white"
+	#this method enables the robot to get only 0..1 values from color/light sensors (much better than hardcoding some values)
+	#this method uses the scan() method which does the necessary work connected with movement etc.
     def calibrate(self, time, calibrationSpeed):
         self.calibrationSpeed = calibrationSpeed
         self.maxDistance = 20
@@ -93,6 +96,7 @@ class Params:
         self.midRight = (self.whiteRight + self.blackRight)/2
         self.midLeft = (self.whiteLeft + self.blackLeft)/2
         #value from 0 to 1 (or 0% to 100%)
+	#the helper method for calibrate()
     def scan(self, time, dir):
         i = 0
         while (i < time):
@@ -113,6 +117,7 @@ class Params:
             i+=1
         self.EV3.stop()
 
+#this class represents the main "line follower" part of the program
 class LineTracker:
 
     def __init__(self):
@@ -122,18 +127,19 @@ class LineTracker:
         self.state = States.readyToCalibrate
 
     def leftColor(self):
-        #value from 1+e to -1+e
-        #positive value if more white
-        #negative value if more black
+        #value from 1+eps to -1+eps
+        #positive value if white
+        #negative value if black
 
         return ((self.EV3.getLeftPickerValue() - self.Params.trueBlackLeft) - self.Params.midLeft)/(1.0*self.Params.midLeft)
 
     def rightColor(self):
-        #value from 1+e to -1+e
-        #positive value if more white
-        #negative value if more blac
+        #value from 1+eps to -1+eps
+        #positive value if white
+        #negative value if blac
         return ((self.EV3.getRightPickerValue() - self.Params.trueBlackRight) - self.Params.midRight)/(1.0*self.Params.midRight)
 
+	#this method makes the robot return to the starting position after the calibration
     def prepare(self):
         self.state = self.States.preparing
         i = 0
@@ -149,7 +155,7 @@ class LineTracker:
                     self.EV3.state = self.States.readyToRun
                     break
             i += 1
-
+	#this method manages the preparations (with button pressing as the necessary interaction)
     def run(self):
         while True:
             if (self.state == self.States.readyToCalibrate):
@@ -167,46 +173,50 @@ class LineTracker:
             elif (self.state == self.States.readyToRun):
                 print("Ready to go + press button to run")
                 self.wait()
-                #self.counter()
                 self.state = self.States.running
                 self.trackLine()
             elif (self.state == self.States.stop):
-                print("Stoped + press button to run")
+                print("Stopped + press button to run")
                 self.wait()
                 self.state = self.States.running
-
+				
+	#this method manages the line following feature
     def trackLine(self):
         #left on white
         #right on white
         error = 0
         errorsSum = 0
-        #was speed = 180, kp = 105, battery issues
         speed = 210
+		#the Kp gain for the Proportional part, Ki for the Integrator
         Kp = 120
         Ki = 3.0
+		#the "blackPower" variable is the gain applied to all the "black" readings
         blackPower = 4.5
         sumOfErrors = 0
-        errorLimit = 300 #TODO: test value of limit
+		#the main program loop
         while(1 == 1):
+			#this is the obstacle checking)
             a = self.EV3.getDistance()
             if(a < self.Params.maxDistance):
                 self.EV3.stop()
                 self.avoidObstacle("left")
+			#getting sensor reading
             right = self.rightColor()
             left = self.leftColor()
+			#applying the gain if any readings are black
             right = right*blackPower if right < 0 else right
             left = left*blackPower if left < 0 else left
             error = (right - left)/2.0
             errorsSum = 0.99*errorsSum + error
             sumOfErrors = sumOfErrors + error
+			#this is the crossroads case - if both sensors are on black, then we are continuing the movement (PID control)
             if (left <-0.5*blackPower and right<-0.5*blackPower):
                 leftSpeed = (int)(speed + error*Kp + Ki*errorsSum)
                 rightSpeed = (int)(speed - error*Kp - Ki*errorsSum)
                 self.EV3.changeLeftMotorSpeed(leftSpeed)
                 self.EV3.changeRightMotorSpeed(rightSpeed)
-            #test if 0 speed is acceptable for motors
+			#here is a state automata addition - if
             elif (left<-0.8*blackPower):
-                #print("A")
                 #we are turnig left but to slow
                 #stop right motor until we cross black line with right sensor
                 self.EV3.changeRightMotorSpeed((int)(-0.7*speed))
@@ -282,17 +292,6 @@ class LineTracker:
             self.EV3.waitForRunningEnd()
             self.EV3.turnAngle(-dir*0.45, speed)
             self.EV3.waitForRunningEnd()
-        '''
-        while (avoiding):
-            if(self.EV3.getDistance()<self.Params.maxDistance):
-                dir = dir * -1
-                timer = -1 * timer
-            if(timer==0):
-                dir = 0
-            self.EV3.changeLeftMotorSpeed(leftSpeed + dir*modificator)
-            self.EV3.changeLeftMotorSpeed(leftSpeed - dir*modificator)
-            timer = timer + 1
-        '''
     def wait(self):
         while not self.EV3.ts.value():
             time.sleep(0.01)
