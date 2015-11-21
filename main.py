@@ -80,7 +80,7 @@ class Params:
         self.blackLeft = self.EV3.getLeftPickerValue()
 
 	#the calibration method scanning the environment for "the blackest black" and "the whitest white"
-	#this method enables the robot to get only 0..1 values from color/light sensors (much better than hardcoding some values)
+	#this method enables the robot to get only -1..1 values from color/light sensors (much better than hardcoding some values)
 	#this method uses the scan() method which does the necessary work connected with movement etc.
     def calibrate(self, time, calibrationSpeed):
         self.calibrationSpeed = calibrationSpeed
@@ -246,7 +246,7 @@ class LineTracker:
                     time.sleep(0.005)
 
             else:
-                #PID control
+                #PID control done when there are no "special cases"
                 leftSpeed = (int)(speed + error*Kp + Ki*errorsSum)
                 rightSpeed = (int)(speed - error*Kp - Ki*errorsSum)
                 self.EV3.changeLeftMotorSpeed(leftSpeed)
