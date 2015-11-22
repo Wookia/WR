@@ -79,8 +79,7 @@ class Params:
         self.blackRight = self.EV3.getRightPickerValue()
         self.blackLeft = self.EV3.getLeftPickerValue()
 
-	#the calibration method scanning the environment for "the blackest black" and "the whitest white"
-	#this method enables the robot to get only -1..1 values from color/light sensors (much better than hardcoding some values)
+	#the calibration method scanning the environment for "the blackest black" and "the whitest white" and scales it down to values from 0 to  n
 	#this method uses the scan() method which does the necessary work connected with movement etc.
     def calibrate(self, time, calibrationSpeed):
         self.calibrationSpeed = calibrationSpeed
@@ -96,7 +95,7 @@ class Params:
         self.blackLeft = 0
         self.midRight = (self.whiteRight + self.blackRight)/2
         self.midLeft = (self.whiteLeft + self.blackLeft)/2
-        #value from 0 to 1 (or 0% to 100%)
+
     #the helper method for calibrate()
     def scan(self, time, dir):
         i = 0
@@ -127,11 +126,11 @@ class LineTracker:
         self.Params = Params(self.EV3)
         self.state = States.readyToCalibrate
 
+	#this methods enables the robot to get only -1..1 values from color/light sensors (much better than hardcoding some values)
     def leftColor(self):
         #value from 1+e to -1+e
         #positive value if more white
         #negative value if more black
-
         return ((self.EV3.getLeftPickerValue() - self.Params.trueBlackLeft) - self.Params.midLeft)/(1.0*self.Params.midLeft)
 
     def rightColor(self):
@@ -256,7 +255,7 @@ class LineTracker:
 
     #the obstacle avoiding method
     #it's basically a series of turns done by the distance sensor and the robot itself
-    #dir:left/right
+    #direction:left/right
     def avoidObstacle(self, direction):
         speed = 200
         avoiding = True
@@ -264,6 +263,7 @@ class LineTracker:
             dir = -1
         else:
             dir = 1
+        #turning  robot left/right and camera in opposite way and run until you dont see abstacle
         self.EV3.turnAngle(dir*0.43, speed)
         self.EV3.changeCameraMotorAngle(-dir*0.26, speed)
         self.EV3.waitForRunningEnd()
@@ -273,6 +273,7 @@ class LineTracker:
             self.EV3.changeLeftMotorSpeed(speed)
             self.EV3.changeRightMotorSpeed(speed)
         self.EV3.stop()
+        #turning  robot left/right and run until you dont see abstacle
         self.EV3.turnAngle(-dir*0.42, speed)
         self.EV3.waitForRunningEnd()
         self.EV3.runAngle(0.7, speed)
@@ -281,6 +282,7 @@ class LineTracker:
             self.EV3.changeLeftMotorSpeed(speed)
             self.EV3.changeRightMotorSpeed(speed)
         self.EV3.stop()
+        #turn camera to the start position and trun left/right
         self.EV3.changeCameraMotorAngle(dir*0.25, speed)
         self.EV3.runAngle(1, speed)
         self.EV3.waitForRunningEnd()
@@ -288,6 +290,7 @@ class LineTracker:
         self.EV3.waitForRunningEnd()
         notPassedLeft = True
         notPassedRight = True
+        #go until u didnt corss the road
         while (notPassedLeft or notPassedRight):
             self.EV3.changeLeftMotorSpeed(speed)
             self.EV3.changeRightMotorSpeed(speed)
@@ -299,16 +302,25 @@ class LineTracker:
             if (self.rightColor() > 0 and self.leftColor() > 0):
                 break
         crosedBlack = False
+        #turn left/right untill you cross line with one sensors
         while(1 == 1):
             self.EV3.changeLeftMotorSpeed(-speed*dir)
             self.EV3.changeRightMotorSpeed(speed*dir)
-            if(self.leftColor()<0):
-                crosedBlack = True
-            if(crosedBlack):
-                if(self.leftColor()>=0 and self.rightColor()>=0):
-                    self.EV3.stop()
-                    break
-
+            if(direction == "left"):
+                if(self.leftColor()<0):
+                    crosedBlack = True
+                if(crosedBlack):
+                    if(self.leftColor()>=0 and self.rightColor()>=0):
+                        self.EV3.stop()
+                        break
+            else:
+                if(self.rightColor()<0):
+                    crosedBlack = True
+                if(crosedBlack):
+                    if(self.leftColor()>=0 and self.rightColor()>=0):
+                        self.EV3.stop()
+                        break
+    #method allow to wait until button is pressed
     def wait(self):
         while not self.EV3.ts.value():
             time.sleep(0.01)
@@ -316,4 +328,3 @@ class LineTracker:
 
 LineTracker = LineTracker()
 LineTracker.run()
-
